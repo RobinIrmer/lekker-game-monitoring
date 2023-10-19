@@ -1,0 +1,430 @@
+openapi: 3.0.3
+info:
+  title: User and Team Management API
+  version: 1.0.0
+  description: API for user and team management with JWT internal
+
+tags:
+  - name: Authentication
+    description: User internal and authorization endpoints
+  - name: User Management
+    description: Endpoints for managing user accounts
+  - name: Team Management
+    description: Endpoints for creating and managing teams
+  - name: Invitation
+    description: Endpoints for managing invitations
+
+servers:
+  - url: http://localhost:3000
+    description: Local development server
+
+paths:
+  /signup:
+    post:
+      summary: User Signup
+      description: Create a new user and assign a random score.
+      tags:
+        - Authentication
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SignupRequest'
+      responses:
+        '200':
+          description: Successful signup
+        '400':
+          description: Bad request
+
+  /signin:
+    post:
+      summary: User Signin
+      description: Authenticate a user and provide a JWT token.
+      tags:
+        - Authentication
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SigninRequest'
+      responses:
+        '200':
+          description: Successful signin
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SigninResponse'
+        '401':
+          description: Invalid credentials
+
+  /users:
+    get:
+      summary: Get User List
+      description: Get a list of authenticated users with details (Rank, Name, Score, Team).
+      tags:
+        - User Management
+      security:
+        - bearerAuth: [ ]
+      responses:
+        '200':
+          description: Successful retrieval of user list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetUsersResponse'
+        '401':
+          description: Unauthorized
+
+  /teams:
+    post:
+      summary: Create a Team
+      description: Create a new team with details (Team name, Maximum member number).
+      tags:
+        - Team Management
+      security:
+        - bearerAuth: [ ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PostTeamRequest'
+      responses:
+        '201':
+          description: Team created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PostTeamResponse'
+        '400':
+          description: Bad request
+        '401':
+          description: Unauthorized
+    get:
+      summary: Get Team List
+      description: Get a list of teams with details (Name, Owner Name, Total Score, Member Number, Available Member Number).
+      tags:
+        - Team Management
+      security:
+        - bearerAuth: [ ]
+      responses:
+        '200':
+          description: Successful retrieval of team list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetTeamsResponse'
+        '401':
+          description: Unauthorized
+
+  /teams/{teamId}:
+    put:
+      summary: Update Team
+      description: Update team information (requires team owner internal).
+      tags:
+        - Team Management
+      security:
+        - bearerAuth: [ ]
+      parameters:
+        - in: path
+          name: teamId
+          required: true
+          schema:
+            type: string
+          description: ID of the team to be updated
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                teamName:
+                  type: string
+                  description: Updated team name
+                maxMemberNumber:
+                  type: integer
+                  minimum: 11
+                  description: Updated maximum member number (greater than 10)
+      responses:
+        '200':
+          description: Team updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetTeamResponse'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden (not team owner)
+
+    delete:
+      summary: Delete Team
+      description: Delete a team (requires team owner internal).
+      tags:
+        - Team Management
+      security:
+        - bearerAuth: [ ]
+      parameters:
+        - in: path
+          name: teamId
+          required: true
+          schema:
+            type: string
+          description: ID of the team to be deleted
+      responses:
+        '204':
+          description: Team deleted successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeleteTeamResponse'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden (not team owner)
+  /teams/{teamId}/members:
+    get:
+      summary: Get Team Members
+      description: Get team information including details of each team member (Rank, Name, Score).
+      tags:
+        - Team Management
+      security:
+        - bearerAuth: [ ]
+      parameters:
+        - in: path
+          name: teamId
+          required: true
+          schema:
+            type: string
+          description: ID of the team
+      responses:
+        '200':
+          description: Successful retrieval of team information and members
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetTeamMembersResponse'
+        '401':
+          description: Unauthorized
+
+  /teams/{teamId}/invitations:
+    get:
+      tags:
+        - Invitation
+      summary: Get pending invitations for a team
+      parameters:
+        - name: teamId
+          in: path
+          description: ID of the team
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/InvitationResponse'
+    post:
+      tags:
+        - Invitation
+      summary: Request Team membership
+      parameters:
+        - name: teamId
+          in: path
+          description: ID of the team
+          required: true
+          schema:
+            type: string
+      responses:
+        '201':
+          description: Invitation created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InvitationResponse'
+        '403':
+          description: Forbidden - Only team owners can invite users
+    put:
+      tags:
+        - Invitation
+      summary: Accept or reject a user invitation (Team Owner only)
+      parameters:
+        - name: teamId
+          in: path
+          description: ID of the team
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PutInvitationRequest'
+      responses:
+        '200':
+          description: Invitation status updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InvitationResponse'
+        '403':
+          description: Forbidden - Only team owners can update invitation status
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    GetUsersResponse:
+      type: array
+      items:
+        $ref: '#/components/schemas/User'
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        rank:
+          type: integer
+        score:
+          type: integer
+
+    PostTeamRequest:
+      type: object
+      required:
+        - teamName
+        - maxMemberNumber
+      properties:
+        teamName:
+          type: string
+          description: Team name
+        maxMemberNumber:
+          type: integer
+          minimum: 11
+          description: Maximum number of team members (greater than 10)
+
+    PostTeamResponse:
+      $ref: '#/components/schemas/Team'
+
+    GetTeamResponse:
+      $ref: '#/components/schemas/Team'
+
+    DeleteTeamResponse:
+      $ref: '#/components/schemas/Team'
+
+    GetTeamsResponse:
+      type: array
+      items:
+        $ref: '#/components/schemas/Team'
+
+    GetTeamMembersResponse:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        totalScore:
+          type: integer
+        member:
+          type: integer
+        availableMember:
+          type: integer
+        members:
+          type: array
+          items:
+            $ref: '#/components/schemas/User'
+
+    Team:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        totalScore:
+          type: integer
+        member:
+          type: integer
+        availableMember:
+          type: integer
+
+    Auth:
+      type: object
+      properties:
+        token:
+          type: string
+
+    SigninRequest:
+      type: object
+      required:
+        - email
+        - password
+      properties:
+        email:
+          type: string
+          description: User's username
+        password:
+          type: string
+          description: User's passwor
+    SigninResponse:
+      $ref: '#/components/schemas/Auth'
+
+    SignupRequest:
+      type: object
+      required:
+        - email
+        - password
+        - name
+      properties:
+        email:
+          type: string
+          description: User's username
+        password:
+          type: string
+          description: User's password
+        name:
+          type: string
+          description: User's name
+
+    InvitationResponse:
+      type: object
+      required:
+        - id
+        - userId
+        - teamId
+        - membership
+        - user
+      properties:
+        userId:
+          type: string
+        teamId:
+          type: string
+        membership:
+          type: string
+        user:
+          $ref: '#/components/schemas/User'
+
+    PutInvitationRequest:
+      type: object
+      properties:
+        membership:
+          type: string
+          enum: [ "ACTIVE", "REJECTED" ]
+        userId:
+          type: string
+      required:
+        - membership
+        - userId

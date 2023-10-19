@@ -1,0 +1,60 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String @id @unique @default(uuid()) @db.Uuid
+  email        String @unique
+  rank         Int
+  name         String
+  score        Int
+  passwordHash String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  myTeams Team[]       @relation("team_owner")
+  teams   TeamMember[]
+
+  @@map("user")
+}
+
+model TeamMember {
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId     String     @map("user_id") @db.Uuid
+  team       Team       @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  teamId     String     @map("team_id") @db.Uuid
+  membership Membership
+
+  @@id([teamId, userId])
+  @@map("team_member")
+}
+
+enum Membership {
+  ACTIVE
+  REJECTED
+  REQUESTED
+}
+
+model Team {
+  id              String @id @unique @default(uuid()) @db.Uuid
+  name            String
+  totalScore      Int
+  member          Int
+  maxMemberNumber Int
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  owner   User   @relation("team_owner", fields: [ownerId], references: [id], onDelete: Cascade)
+  ownerId String @db.Uuid
+
+  members TeamMember[]
+
+  @@map("team")
+}
